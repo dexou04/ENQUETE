@@ -1,0 +1,1118 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=1280">
+<title>Archives — Dossiers d'enquête</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg-1:#0a0c16;
+    --bg-2:#170f2b;
+    --bg-3:#2a1240;
+    --bg-4:#150a22;
+    --glass-bg: rgba(255,255,255,0.055);
+    --glass-bg-strong: rgba(255,255,255,0.09);
+    --glass-border: rgba(255,255,255,0.14);
+    --glass-border-soft: rgba(255,255,255,0.08);
+    --text-main:#ece9f5;
+    --text-muted:#948fae;
+    --text-dim:#6b6684;
+    --red:#d6484f;
+    --red-soft: rgba(214,72,79,0.16);
+    --amber:#e8a13d;
+    --purple:#8d6bc7;
+    --teal:#3fa89a;
+    --font-display:'Special Elite', 'IBM Plex Mono', monospace;
+    --font-body:'IBM Plex Sans', sans-serif;
+    --font-mono:'IBM Plex Mono', monospace;
+  }
+
+  *{box-sizing:border-box; margin:0; padding:0;}
+
+  html, body{
+    height:100%;
+    width:100%;
+    overflow:hidden;
+    font-family:var(--font-body);
+    color:var(--text-main);
+    background:var(--bg-1);
+  }
+
+  body{
+    position:fixed;
+    inset:0;
+    min-width:1180px;
+  }
+
+  /* ---------- fond dégradé animé ---------- */
+  .bg-scene{
+    position:fixed; inset:0; z-index:0; overflow:hidden;
+  }
+  .bg-scene::before{
+    content:'';
+    position:absolute; inset:-20%;
+    background:
+      radial-gradient(circle at 15% 20%, rgba(141,107,199,0.28), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(214,72,79,0.16), transparent 40%),
+      radial-gradient(circle at 75% 85%, rgba(63,168,154,0.14), transparent 45%),
+      linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 45%, var(--bg-3) 75%, var(--bg-4) 100%);
+    background-size: 160% 160%, 160% 160%, 160% 160%, 100% 100%;
+    animation: drift 40s ease-in-out infinite alternate;
+  }
+  @keyframes drift{
+    0%{ background-position: 0% 0%, 100% 0%, 50% 100%, 0 0; }
+    100%{ background-position: 20% 30%, 70% 40%, 30% 60%, 0 0; }
+  }
+  .bg-grain{
+    position:absolute; inset:0;
+    opacity:0.035;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    mix-blend-mode:overlay;
+  }
+  .bg-vignette{
+    position:absolute; inset:0;
+    box-shadow: inset 0 0 220px 60px rgba(0,0,0,0.55);
+  }
+
+  /* ---------- utilitaires glass ---------- */
+  .glass{
+    background:var(--glass-bg);
+    backdrop-filter: blur(18px) saturate(140%);
+    -webkit-backdrop-filter: blur(18px) saturate(140%);
+    border:1px solid var(--glass-border);
+    box-shadow: 0 8px 32px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+
+  button{ font-family:var(--font-body); cursor:pointer; border:none; outline:none; }
+  input, select, textarea{ font-family:var(--font-body); outline:none; }
+
+  ::selection{ background: rgba(232,161,61,0.35); }
+
+  /* ---------- scrollbars ---------- */
+  ::-webkit-scrollbar{ width:9px; height:9px; }
+  ::-webkit-scrollbar-track{ background:transparent; }
+  ::-webkit-scrollbar-thumb{ background:rgba(255,255,255,0.14); border-radius:8px; }
+  ::-webkit-scrollbar-thumb:hover{ background:rgba(255,255,255,0.22); }
+
+  #app{ position:relative; z-index:1; height:100%; width:100%; }
+
+  .view{ height:100%; width:100%; display:none; }
+  .view.active{ display:flex; }
+
+  /* =====================================================
+     LOGIN
+  ===================================================== */
+  #view-login{
+    align-items:center; justify-content:center; flex-direction:column;
+  }
+  .login-card{
+    width:400px;
+    padding:44px 40px 36px;
+    border-radius:20px;
+    display:flex; flex-direction:column; align-items:center;
+    position:relative;
+  }
+  .login-badge{
+    width:56px; height:56px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    background: radial-gradient(circle at 35% 30%, rgba(214,72,79,0.35), rgba(141,107,199,0.15));
+    border:1px solid var(--glass-border);
+    margin-bottom:18px;
+  }
+  .login-badge svg{ width:26px; height:26px; }
+  .login-title{
+    font-family:var(--font-display);
+    font-size:22px;
+    letter-spacing:2px;
+    text-transform:uppercase;
+    color:var(--text-main);
+  }
+  .login-sub{
+    font-size:12.5px;
+    color:var(--text-muted);
+    margin-top:6px;
+    letter-spacing:0.5px;
+    margin-bottom:30px;
+    text-align:center;
+  }
+  .field{ width:100%; margin-bottom:14px; }
+  .field label{
+    display:block; font-size:11px; letter-spacing:1.5px; text-transform:uppercase;
+    color:var(--text-dim); margin-bottom:7px; font-weight:600;
+  }
+  .field input{
+    width:100%; padding:12px 14px; border-radius:10px;
+    background:rgba(255,255,255,0.045);
+    border:1px solid var(--glass-border-soft);
+    color:var(--text-main); font-size:14.5px;
+    transition: border-color .15s, background .15s;
+  }
+  .field input:focus{
+    border-color: rgba(232,161,61,0.55);
+    background:rgba(255,255,255,0.07);
+  }
+  .btn-primary{
+    width:100%; padding:13px; margin-top:8px; border-radius:10px;
+    background: linear-gradient(135deg, var(--red), #b6383f);
+    color:#fff; font-weight:600; font-size:14px; letter-spacing:0.5px;
+    box-shadow: 0 6px 18px rgba(214,72,79,0.28);
+    transition: transform .12s, box-shadow .12s, filter .12s;
+  }
+  .btn-primary:hover{ filter:brightness(1.08); transform:translateY(-1px); }
+  .btn-primary:active{ transform:translateY(0); }
+  .btn-primary:disabled{ opacity:0.55; cursor:default; transform:none; }
+  .login-error{
+    width:100%; margin-top:14px; padding:10px 12px; border-radius:8px;
+    background:var(--red-soft); border:1px solid rgba(214,72,79,0.35);
+    color:#f3a9ac; font-size:12.5px; display:none;
+  }
+  .login-error.show{ display:block; }
+  .login-foot{
+    margin-top:26px; font-size:11px; color:var(--text-dim);
+    letter-spacing:1px; text-transform:uppercase;
+  }
+
+  /* =====================================================
+     HOME
+  ===================================================== */
+  #view-home{ flex-direction:column; padding:34px 46px; height:100%; width:100%; }
+
+  .topbar{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    margin-bottom:28px; flex-shrink:0;
+  }
+  .topbar-title{
+    font-family:var(--font-display);
+    font-size:27px; letter-spacing:1.5px; text-transform:uppercase;
+  }
+  .topbar-sub{
+    font-size:12.5px; color:var(--text-muted); margin-top:6px; letter-spacing:0.4px;
+  }
+  .topbar-right{ display:flex; align-items:center; gap:10px; }
+  .user-pill{
+    display:flex; align-items:center; gap:8px;
+    padding:8px 14px 8px 10px; border-radius:999px;
+    font-size:12.5px; color:var(--text-muted); letter-spacing:0.3px;
+  }
+  .user-dot{
+    width:8px; height:8px; border-radius:50%; background:var(--teal);
+    box-shadow:0 0 8px var(--teal);
+  }
+  .icon-btn{
+    width:38px; height:38px; border-radius:11px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-main);
+    transition: background .15s, transform .12s;
+  }
+  .icon-btn:hover{ background:var(--glass-bg-strong); transform:translateY(-1px); }
+  .icon-btn.add{ color:var(--amber); }
+  .icon-btn svg{ width:18px; height:18px; }
+  .btn-logout{
+    display:flex; align-items:center; gap:7px;
+    padding:9px 15px; border-radius:11px;
+    font-size:12.5px; color:var(--text-muted); letter-spacing:0.3px;
+    transition: background .15s, color .15s;
+  }
+  .btn-logout:hover{ background:var(--glass-bg-strong); color:var(--text-main); }
+  .btn-logout svg{ width:14px; height:14px; }
+
+  .dossiers-scroll{ flex:1; overflow-y:auto; padding-bottom:10px; }
+  .dossiers-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    gap:20px;
+  }
+
+  .dossier-card{
+    border-radius:18px; padding:20px 20px 18px;
+    position:relative; overflow:hidden;
+    cursor:pointer;
+    transition: transform .16s ease, box-shadow .16s ease, border-color .16s;
+    min-height:150px;
+    display:flex; flex-direction:column;
+  }
+  .dossier-card:hover{
+    transform:translateY(-4px);
+    border-color:rgba(255,255,255,0.24);
+    box-shadow: 0 16px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+  .dossier-card::before{
+    content:''; position:absolute; top:0; left:22px; width:34px; height:6px;
+    border-radius:0 0 4px 4px;
+    background: var(--cat-color, var(--purple));
+    opacity:0.85;
+  }
+  .dossier-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .cat-badge{
+    display:inline-flex; align-items:center; gap:6px;
+    padding:4px 10px; border-radius:999px;
+    font-size:10px; letter-spacing:1px; text-transform:uppercase; font-weight:600;
+    background: color-mix(in srgb, var(--cat-color, var(--purple)) 20%, transparent);
+    color: var(--cat-color, var(--purple));
+    border:1px solid color-mix(in srgb, var(--cat-color, var(--purple)) 45%, transparent);
+  }
+  .case-no{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); letter-spacing:0.5px; }
+  .dossier-name{
+    font-family:var(--font-display);
+    font-size:19px; line-height:1.32; letter-spacing:0.3px;
+    margin-bottom:auto; padding-bottom:14px; word-break:break-word;
+  }
+  .dossier-meta{
+    display:flex; align-items:center; justify-content:space-between;
+    font-size:11px; color:var(--text-dim); letter-spacing:0.3px;
+    border-top:1px solid var(--glass-border-soft); padding-top:11px;
+  }
+  .dossier-del{
+    position:absolute; top:14px; right:14px; width:26px; height:26px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-dim); opacity:0; transition: opacity .15s, background .15s, color .15s;
+  }
+  .dossier-card:hover .dossier-del{ opacity:1; }
+  .dossier-del:hover{ background:var(--red-soft); color:#f3a9ac; }
+  .dossier-del svg{ width:13px; height:13px; }
+
+  .empty-state{
+    height:100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    color:var(--text-dim); text-align:center; gap:14px;
+  }
+  .empty-state svg{ width:44px; height:44px; opacity:0.5; }
+  .empty-state .e-title{ font-family:var(--font-display); font-size:16px; color:var(--text-muted); letter-spacing:0.5px; }
+  .empty-state .e-sub{ font-size:12.5px; max-width:280px; line-height:1.5; }
+
+  /* =====================================================
+     DOSSIER DETAIL
+  ===================================================== */
+  #view-dossier{ flex-direction:column; padding:34px 46px; height:100%; width:100%; }
+
+  .detail-top{ display:flex; align-items:center; gap:14px; margin-bottom:6px; flex-shrink:0; }
+  .back-btn{
+    width:36px; height:36px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); flex-shrink:0;
+    transition: background .15s, color .15s;
+  }
+  .back-btn:hover{ background:var(--glass-bg-strong); color:var(--text-main); }
+  .back-btn svg{ width:17px; height:17px; }
+
+  .detail-heading{ flex:1; min-width:0; }
+  .detail-name{ font-family:var(--font-display); font-size:23px; letter-spacing:0.5px; }
+  .detail-meta-row{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+
+  .detail-toolbar{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+
+  .subcards-scroll{ flex:1; overflow-y:auto; margin-top:26px; padding-bottom:10px; }
+  .subcards-grid{
+    display:grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap:18px;
+  }
+
+  .subcard{
+    border-radius:16px; padding:17px 18px 15px;
+    cursor:pointer; position:relative;
+    min-height:130px; display:flex; flex-direction:column;
+    transition: transform .15s, border-color .15s, box-shadow .15s;
+  }
+  .subcard:hover{
+    transform:translateY(-3px);
+    border-color:rgba(255,255,255,0.22);
+    box-shadow:0 12px 30px rgba(0,0,0,0.35);
+  }
+  .subcard-title{
+    font-family:var(--font-display); font-size:15px; letter-spacing:0.3px;
+    margin-bottom:9px; padding-right:20px; word-break:break-word;
+  }
+  .subcard-preview{
+    font-size:12.5px; color:var(--text-muted); line-height:1.55;
+    flex:1; overflow:hidden; display:-webkit-box;
+    -webkit-line-clamp:4; -webkit-box-orient:vertical;
+  }
+  .subcard-preview:empty::before{ content:'Fiche vide — cliquez pour rédiger.'; color:var(--text-dim); font-style:italic; }
+  .subcard-foot{
+    margin-top:12px; padding-top:10px; border-top:1px solid var(--glass-border-soft);
+    font-size:10.5px; color:var(--text-dim); letter-spacing:0.3px;
+  }
+  .subcard-del{
+    position:absolute; top:13px; right:13px; width:24px; height:24px; border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-dim); opacity:0; transition: opacity .15s, background .15s, color .15s;
+  }
+  .subcard:hover .subcard-del{ opacity:1; }
+  .subcard-del:hover{ background:var(--red-soft); color:#f3a9ac; }
+  .subcard-del svg{ width:12px; height:12px; }
+
+  .add-subcard{
+    border-radius:16px; min-height:130px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px;
+    border:1.5px dashed var(--glass-border);
+    color:var(--text-dim);
+    background:transparent;
+    transition: background .15s, color .15s, border-color .15s;
+  }
+  .add-subcard:hover{ background:var(--glass-bg); color:var(--amber); border-color:rgba(232,161,61,0.4); }
+  .add-subcard svg{ width:20px; height:20px; }
+  .add-subcard span{ font-size:12px; letter-spacing:0.4px; }
+
+  /* =====================================================
+     MODALS
+  ===================================================== */
+  .overlay{
+    position:fixed; inset:0; z-index:50;
+    background:rgba(6,4,14,0.62);
+    backdrop-filter: blur(4px);
+    display:none; align-items:center; justify-content:center;
+    animation: fadeIn .15s ease;
+  }
+  .overlay.show{ display:flex; }
+  @keyframes fadeIn{ from{ opacity:0; } to{ opacity:1; } }
+
+  .modal{
+    width:420px; border-radius:18px; padding:28px 26px 24px;
+    animation: popIn .18s cubic-bezier(.2,.9,.3,1.2);
+  }
+  @keyframes popIn{ from{ opacity:0; transform:scale(.96) translateY(6px); } to{ opacity:1; transform:none; } }
+
+  .modal-title{ font-family:var(--font-display); font-size:17px; letter-spacing:0.5px; margin-bottom:20px; }
+
+  .cat-options{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .cat-opt{
+    padding:7px 13px; border-radius:999px; font-size:12px; letter-spacing:0.3px;
+    background:rgba(255,255,255,0.045); border:1px solid var(--glass-border-soft);
+    color:var(--text-muted); transition: all .12s;
+  }
+  .cat-opt:hover{ border-color:rgba(255,255,255,0.28); color:var(--text-main); }
+  .cat-opt.selected{
+    background: color-mix(in srgb, var(--amber) 22%, transparent);
+    border-color: var(--amber); color:var(--amber);
+  }
+
+  .modal-actions{ display:flex; gap:10px; margin-top:22px; }
+  .btn-ghost{
+    flex:1; padding:11px; border-radius:10px; font-size:13px; font-weight:600;
+    color:var(--text-muted); background:rgba(255,255,255,0.04); border:1px solid var(--glass-border-soft);
+    transition: background .15s, color .15s;
+  }
+  .btn-ghost:hover{ background:var(--glass-bg-strong); color:var(--text-main); }
+  .modal-actions .btn-primary{ flex:1.4; margin-top:0; width:auto; }
+  .modal-actions .btn-danger{
+    flex:1; padding:11px; border-radius:10px; font-size:13px; font-weight:600;
+    color:#f3a9ac; background:var(--red-soft); border:1px solid rgba(214,72,79,0.3);
+    transition: filter .15s;
+  }
+  .modal-actions .btn-danger:hover{ filter:brightness(1.15); }
+
+  /* ---- editor overlay ---- */
+  .editor-overlay .modal, #editor-modal{
+    width:760px; max-width:90vw; height:78vh; max-height:640px;
+    display:flex; flex-direction:column; padding:0; border-radius:20px; overflow:hidden;
+  }
+  .editor-head{
+    padding:20px 24px 14px; border-bottom:1px solid var(--glass-border-soft); flex-shrink:0;
+  }
+  .editor-title-input{
+    width:100%; background:transparent; border:none; color:var(--text-main);
+    font-family:var(--font-display); font-size:19px; letter-spacing:0.3px;
+  }
+  .editor-title-input::placeholder{ color:var(--text-dim); }
+  .editor-sub{ font-size:11px; color:var(--text-dim); margin-top:6px; letter-spacing:0.3px; }
+
+  .editor-toolbar{
+    display:flex; align-items:center; gap:4px; padding:10px 20px;
+    border-bottom:1px solid var(--glass-border-soft); flex-shrink:0; flex-wrap:wrap;
+  }
+  .tb-btn{
+    min-width:32px; height:32px; padding:0 8px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-muted); font-size:13px; font-weight:600;
+    background:transparent; transition: background .12s, color .12s;
+  }
+  .tb-btn:hover{ background:var(--glass-bg-strong); color:var(--text-main); }
+  .tb-btn.hl{ color:#1a1420; background:#e8d33d; font-weight:700; }
+  .tb-btn.hl:hover{ filter:brightness(1.08); }
+  .tb-btn.ink{ color:var(--red); font-family:var(--font-display); }
+  .tb-sep{ width:1px; height:20px; background:var(--glass-border-soft); margin:0 6px; flex-shrink:0; }
+  .tb-btn svg{ width:15px; height:15px; }
+
+  .editor-body{
+    flex:1; overflow-y:auto; padding:22px 26px;
+  }
+  #editor-content{
+    min-height:100%; font-size:14.5px; line-height:1.75; color:var(--text-main);
+    outline:none;
+  }
+  #editor-content mark{ background:#e8d33d; color:#1a1420; padding:0 2px; border-radius:2px; }
+  #editor-content blockquote{
+    border-left:3px solid var(--purple); padding:4px 14px; margin:10px 0;
+    color:var(--text-muted); font-style:italic;
+  }
+  #editor-content h3{ font-family:var(--font-display); font-size:16px; margin:14px 0 6px; letter-spacing:0.3px; }
+  #editor-content ul, #editor-content ol{ padding-left:22px; margin:6px 0; }
+  #editor-content:empty::before{
+    content:'Rédigez vos notes d\'enquête ici...'; color:var(--text-dim); font-style:italic;
+  }
+
+  .editor-foot{
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 22px; border-top:1px solid var(--glass-border-soft); flex-shrink:0;
+  }
+  .save-status{ font-size:11px; color:var(--text-dim); letter-spacing:0.4px; display:flex; align-items:center; gap:6px; }
+  .save-status .dot{ width:6px; height:6px; border-radius:50%; background:var(--text-dim); }
+  .save-status.saved .dot{ background:var(--teal); box-shadow:0 0 6px var(--teal); }
+  .save-status.pending .dot{ background:var(--amber); }
+  .editor-foot-actions{ display:flex; gap:8px; }
+  .editor-foot-actions button{ padding:9px 17px; border-radius:9px; font-size:12.5px; font-weight:600; }
+  .btn-close{ color:var(--text-muted); background:rgba(255,255,255,0.04); border:1px solid var(--glass-border-soft); }
+  .btn-close:hover{ background:var(--glass-bg-strong); color:var(--text-main); }
+  .btn-del-sub{ color:#f3a9ac; background:var(--red-soft); border:1px solid rgba(214,72,79,0.3); }
+  .btn-del-sub:hover{ filter:brightness(1.15); }
+
+  /* toast */
+  #toast{
+    position:fixed; bottom:26px; left:50%; transform:translateX(-50%) translateY(20px);
+    padding:12px 20px; border-radius:12px; font-size:12.5px; z-index:100;
+    opacity:0; pointer-events:none; transition: opacity .2s, transform .2s;
+    display:flex; align-items:center; gap:8px;
+  }
+  #toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+  #toast .dot{ width:6px; height:6px; border-radius:50%; background:var(--teal); }
+  #toast.error .dot{ background:var(--red); }
+
+  .spinner{
+    width:16px; height:16px; border-radius:50%;
+    border:2px solid rgba(255,255,255,0.25); border-top-color:#fff;
+    animation: spin .7s linear infinite; display:inline-block;
+  }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .hidden{ display:none !important; }
+</style>
+</head>
+<body>
+
+<div class="bg-scene">
+  <div class="bg-grain"></div>
+  <div class="bg-vignette"></div>
+</div>
+
+<div id="app">
+
+  <!-- ============ LOGIN ============ -->
+  <div id="view-login" class="view active">
+    <form class="login-card glass" id="login-form">
+      <div class="login-badge">
+        <svg viewBox="0 0 24 24" fill="none" stroke="#e8a13d" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3" stroke="#d6484f"/></svg>
+      </div>
+      <div class="login-title">Bureau d'enquêtes</div>
+      <div class="login-sub">Accès réservé aux enquêteurs habilités</div>
+
+      <div class="field">
+        <label for="login-id">Identifiant</label>
+        <input id="login-id" type="text" autocomplete="username" placeholder="ex. dexie" required>
+      </div>
+      <div class="field">
+        <label for="login-pw">Mot de passe</label>
+        <input id="login-pw" type="password" autocomplete="current-password" placeholder="••••••••" required>
+      </div>
+
+      <button type="submit" class="btn-primary" id="login-btn">Se connecter</button>
+      <div class="login-error" id="login-error"></div>
+      <div class="login-foot">Aucune inscription — comptes créés en amont</div>
+    </form>
+  </div>
+
+  <!-- ============ HOME ============ -->
+  <div id="view-home" class="view">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title">Dossiers d'enquête</div>
+        <div class="topbar-sub" id="dossier-count-label">Chargement…</div>
+      </div>
+      <div class="topbar-right">
+        <div class="user-pill glass"><span class="user-dot"></span><span id="user-label">—</span></div>
+        <button class="icon-btn add glass" id="btn-open-create" title="Nouveau dossier">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+        </button>
+        <button class="btn-logout glass" id="btn-logout">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Déconnexion
+        </button>
+      </div>
+    </div>
+
+    <div class="dossiers-scroll">
+      <div class="dossiers-grid" id="dossiers-grid"></div>
+      <div class="empty-state hidden" id="dossiers-empty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z"/></svg>
+        <div class="e-title">Aucun dossier ouvert</div>
+        <div class="e-sub">Cliquez sur le “+” en haut à droite pour ouvrir une nouvelle enquête.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ DOSSIER DETAIL ============ -->
+  <div id="view-dossier" class="view">
+    <div class="detail-top">
+      <button class="back-btn glass" id="btn-back">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      </button>
+      <div class="detail-heading">
+        <div class="detail-name" id="detail-name">—</div>
+        <div class="detail-meta-row">
+          <span class="cat-badge" id="detail-cat">—</span>
+          <span class="case-no" id="detail-caseno"></span>
+        </div>
+      </div>
+      <div class="detail-toolbar">
+        <button class="icon-btn glass" id="btn-delete-dossier" title="Supprimer le dossier">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7h16M9 7V5a1 1 0 011-1h4a1 1 0 011 1v2m-8 0v12a1 1 0 001 1h6a1 1 0 001-1V7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="subcards-scroll">
+      <div class="subcards-grid" id="subcards-grid"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ============ MODAL: create dossier ============ -->
+<div class="overlay" id="create-overlay">
+  <form class="modal glass" id="create-form">
+    <div class="modal-title">Nouveau dossier</div>
+    <div class="field">
+      <label for="new-name">Nom du dossier</label>
+      <input id="new-name" type="text" placeholder="ex. Affaire Bellamy" required maxlength="120">
+    </div>
+    <div class="field" style="margin-bottom:0;">
+      <label>Catégorie</label>
+      <input id="new-category" type="text" placeholder="ex. gang, famille…" list="cat-list" required maxlength="60">
+      <datalist id="cat-list">
+        <option value="Gang">
+        <option value="Organisation criminelle">
+        <option value="Petites frappes">
+        <option value="Famille">
+      </datalist>
+      <div class="cat-options" id="cat-options">
+        <div class="cat-opt" data-cat="Gang">Gang</div>
+        <div class="cat-opt" data-cat="Organisation criminelle">Organisation criminelle</div>
+        <div class="cat-opt" data-cat="Petites frappes">Petites frappes</div>
+        <div class="cat-opt" data-cat="Famille">Famille</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="create-cancel">Annuler</button>
+      <button type="submit" class="btn-primary" id="create-submit">Créer le dossier</button>
+    </div>
+  </form>
+</div>
+
+<!-- ============ MODAL: confirm delete dossier ============ -->
+<div class="overlay" id="delete-dossier-overlay">
+  <div class="modal glass" style="width:360px;">
+    <div class="modal-title">Supprimer ce dossier ?</div>
+    <div style="font-size:13px; color:var(--text-muted); line-height:1.5;">
+      Toutes les fiches associées seront définitivement supprimées. Cette action est irréversible.
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="delete-dossier-cancel">Annuler</button>
+      <button type="button" class="btn-danger" id="delete-dossier-confirm">Supprimer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ============ EDITOR: subcard ============ -->
+<div class="overlay" id="editor-overlay">
+  <div class="modal glass" id="editor-modal">
+    <div class="editor-head">
+      <input type="text" id="editor-title-input" class="editor-title-input" placeholder="Titre de la fiche" maxlength="140">
+      <div class="editor-sub" id="editor-sub">—</div>
+    </div>
+    <div class="editor-toolbar">
+      <button type="button" class="tb-btn" data-cmd="bold" title="Gras"><b>G</b></button>
+      <button type="button" class="tb-btn" data-cmd="italic" title="Italique"><i>I</i></button>
+      <button type="button" class="tb-btn" data-cmd="underline" title="Souligné"><u>S</u></button>
+      <button type="button" class="tb-btn" data-cmd="strikeThrough" title="Barré"><s>B</s></button>
+      <div class="tb-sep"></div>
+      <button type="button" class="tb-btn hl" data-cmd="hiliteColor" data-val="#e8d33d" title="Surligner">A</button>
+      <button type="button" class="tb-btn" data-cmd="hiliteColor" data-val="transparent" title="Retirer le surlignage">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3l18 18M9 3h9a1 1 0 011 1v9M6 8v10a1 1 0 001 1h10"/></svg>
+      </button>
+      <button type="button" class="tb-btn ink" data-cmd="foreColor" data-val="#d6484f" title="Encre rouge">R</button>
+      <button type="button" class="tb-btn" data-cmd="foreColor" data-val="#ece9f5" title="Texte normal">N</button>
+      <div class="tb-sep"></div>
+      <button type="button" class="tb-btn" data-cmd="formatBlock" data-val="h3" title="Titre">H</button>
+      <button type="button" class="tb-btn" data-cmd="formatBlock" data-val="blockquote" title="Citation / témoignage">“ ”</button>
+      <button type="button" class="tb-btn" data-cmd="insertUnorderedList" title="Liste à puces">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/><path d="M9 6h11M9 12h11M9 18h11"/></svg>
+      </button>
+      <div class="tb-sep"></div>
+      <button type="button" class="tb-btn" data-cmd="removeFormat" title="Effacer la mise en forme">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7V5a1 1 0 011-1h9l5 5-9 9-6-6z"/><path d="M13 4L7 10"/><line x1="3" y1="21" x2="21" y2="21"/></svg>
+      </button>
+    </div>
+    <div class="editor-body">
+      <div id="editor-content" contenteditable="true"></div>
+    </div>
+    <div class="editor-foot">
+      <div class="save-status" id="save-status"><span class="dot"></span><span id="save-status-text">Enregistré</span></div>
+      <div class="editor-foot-actions">
+        <button type="button" class="btn-del-sub" id="btn-delete-subcard">Supprimer la fiche</button>
+        <button type="button" class="btn-close" id="btn-close-editor">Fermer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="toast"><span class="dot"></span><span id="toast-text"></span></div>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const SUPABASE_URL = 'https://zqhyuediagfyrniqblzh.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InpxaHl1ZWRpYWdmeXJuaXFibHpoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY3MzIwNTYsImV4cCI6MjEwMjMwODA1Nn0.k8PyCfXMUZBGzj75PdHQGw_kmPZ0vrLzdQOjUiQQ56U';
+const EMAIL_DOMAIN = '@dossier.local';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CATEGORY_COLORS = {
+  'gang': '#d6484f',
+  'organisation criminelle': '#8d6bc7',
+  'petites frappes': '#e8a13d',
+  'famille': '#3fa89a',
+};
+function catColor(cat){
+  return CATEGORY_COLORS[(cat||'').trim().toLowerCase()] || '#8d6bc7';
+}
+
+/* ---------------- helpers ---------------- */
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+
+function showView(id){
+  $$('.view').forEach(v => v.classList.remove('active'));
+  $('#'+id).classList.add('active');
+}
+function showOverlay(id){ $('#'+id).classList.add('show'); }
+function hideOverlay(id){ $('#'+id).classList.remove('show'); }
+
+let toastTimer = null;
+function toast(msg, isError){
+  const el = $('#toast');
+  $('#toast-text').textContent = msg;
+  el.classList.toggle('error', !!isError);
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 2600);
+}
+
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+function stripHtml(html){
+  const d = document.createElement('div');
+  d.innerHTML = html || '';
+  return d.textContent || '';
+}
+function fmtDate(iso){
+  const d = new Date(iso);
+  return d.toLocaleDateString('fr-FR', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+function caseNumber(index, createdAt){
+  const year = new Date(createdAt).getFullYear();
+  return `AFF-${year}-${String(index).padStart(3,'0')}`;
+}
+
+/* ---------------- state ---------------- */
+let currentUser = null;
+let dossiers = [];
+let currentDossier = null;
+let currentSubcards = [];
+let currentEditingSubcard = null;
+let saveTimer = null;
+
+/* ================================================
+   AUTH
+================================================ */
+async function init(){
+  const { data:{ session } } = await supabase.auth.getSession();
+  if(session){
+    currentUser = session.user;
+    await enterApp();
+  } else {
+    showView('view-login');
+  }
+}
+
+$('#login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const id = $('#login-id').value.trim().toLowerCase();
+  const pw = $('#login-pw').value;
+  const btn = $('#login-btn');
+  const errBox = $('#login-error');
+  errBox.classList.remove('show');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const { data, error } = await supabase.auth.signInWithPassword({
+    email: id + EMAIL_DOMAIN,
+    password: pw
+  });
+
+  btn.disabled = false;
+  btn.textContent = 'Se connecter';
+
+  if(error){
+    errBox.textContent = "Identifiant ou mot de passe incorrect.";
+    errBox.classList.add('show');
+    return;
+  }
+  currentUser = data.user;
+  await enterApp();
+});
+
+$('#btn-logout').addEventListener('click', async () => {
+  await supabase.auth.signOut();
+  currentUser = null;
+  $('#login-id').value = '';
+  $('#login-pw').value = '';
+  showView('view-login');
+});
+
+async function enterApp(){
+  const username = (currentUser.email || '').split('@')[0];
+  $('#user-label').textContent = username;
+  showView('view-home');
+  await loadDossiers();
+}
+
+/* ================================================
+   DOSSIERS — HOME
+================================================ */
+async function loadDossiers(){
+  $('#dossier-count-label').textContent = 'Chargement…';
+  const { data, error } = await supabase
+    .from('dossiers')
+    .select('*, subcards(count)')
+    .order('created_at', { ascending: false });
+
+  if(error){
+    toast("Erreur de chargement des dossiers", true);
+    console.error(error);
+    return;
+  }
+  dossiers = data || [];
+  renderDossiers();
+}
+
+function renderDossiers(){
+  const grid = $('#dossiers-grid');
+  const empty = $('#dossiers-empty');
+  grid.innerHTML = '';
+
+  $('#dossier-count-label').textContent =
+    dossiers.length === 0 ? 'Aucun dossier actif' :
+    dossiers.length === 1 ? '1 dossier actif' :
+    `${dossiers.length} dossiers actifs`;
+
+  if(dossiers.length === 0){
+    empty.classList.remove('hidden');
+    return;
+  }
+  empty.classList.add('hidden');
+
+  dossiers.forEach((d, i) => {
+    const count = (d.subcards && d.subcards[0] && d.subcards[0].count) || 0;
+    const color = catColor(d.category);
+    const card = document.createElement('div');
+    card.className = 'dossier-card glass';
+    card.style.setProperty('--cat-color', color);
+    card.innerHTML = `
+      <button class="dossier-del" data-id="${d.id}" title="Supprimer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="dossier-top">
+        <span class="cat-badge">${escapeHtml(d.category)}</span>
+        <span class="case-no">${caseNumber(dossiers.length - i, d.created_at)}</span>
+      </div>
+      <div class="dossier-name">${escapeHtml(d.name)}</div>
+      <div class="dossier-meta">
+        <span>${count} fiche${count === 1 ? '' : 's'}</span>
+        <span>${fmtDate(d.created_at)}</span>
+      </div>
+    `;
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('.dossier-del')) return;
+      openDossier(d);
+    });
+    grid.appendChild(card);
+  });
+
+  $$('.dossier-del').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      pendingDeleteDossierId = btn.dataset.id;
+      showOverlay('delete-dossier-overlay');
+    });
+  });
+}
+
+/* ---- create dossier modal ---- */
+let selectedCategory = '';
+
+$('#btn-open-create').addEventListener('click', () => {
+  $('#new-name').value = '';
+  $('#new-category').value = '';
+  selectedCategory = '';
+  $$('.cat-opt').forEach(o => o.classList.remove('selected'));
+  showOverlay('create-overlay');
+  setTimeout(() => $('#new-name').focus(), 50);
+});
+$('#create-cancel').addEventListener('click', () => hideOverlay('create-overlay'));
+$('#create-overlay').addEventListener('click', (e) => { if(e.target.id === 'create-overlay') hideOverlay('create-overlay'); });
+
+$$('.cat-opt').forEach(opt => {
+  opt.addEventListener('click', () => {
+    $('#new-category').value = opt.dataset.cat;
+    $$('.cat-opt').forEach(o => o.classList.remove('selected'));
+    opt.classList.add('selected');
+  });
+});
+
+$('#create-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const name = $('#new-name').value.trim();
+  const category = $('#new-category').value.trim();
+  if(!name || !category) return;
+
+  const btn = $('#create-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
+  const { data, error } = await supabase
+    .from('dossiers')
+    .insert({ name, category, created_by: currentUser.id })
+    .select()
+    .single();
+
+  btn.disabled = false;
+  btn.textContent = 'Créer le dossier';
+
+  if(error){
+    toast("Impossible de créer le dossier", true);
+    console.error(error);
+    return;
+  }
+  hideOverlay('create-overlay');
+  toast('Dossier créé');
+  await loadDossiers();
+});
+
+/* ---- delete dossier ---- */
+let pendingDeleteDossierId = null;
+$('#delete-dossier-cancel').addEventListener('click', () => hideOverlay('delete-dossier-overlay'));
+$('#delete-dossier-overlay').addEventListener('click', (e) => { if(e.target.id === 'delete-dossier-overlay') hideOverlay('delete-dossier-overlay'); });
+
+$('#delete-dossier-confirm').addEventListener('click', async () => {
+  if(!pendingDeleteDossierId) return;
+  const { error } = await supabase.from('dossiers').delete().eq('id', pendingDeleteDossierId);
+  hideOverlay('delete-dossier-overlay');
+  if(error){ toast('Erreur lors de la suppression', true); return; }
+  toast('Dossier supprimé');
+  if(currentDossier && currentDossier.id === pendingDeleteDossierId){
+    showView('view-home');
+  }
+  pendingDeleteDossierId = null;
+  await loadDossiers();
+});
+
+$('#btn-delete-dossier').addEventListener('click', () => {
+  if(!currentDossier) return;
+  pendingDeleteDossierId = currentDossier.id;
+  showOverlay('delete-dossier-overlay');
+});
+
+/* ================================================
+   DOSSIER DETAIL
+================================================ */
+$('#btn-back').addEventListener('click', () => {
+  showView('view-home');
+  loadDossiers();
+});
+
+async function openDossier(d){
+  currentDossier = d;
+  const color = catColor(d.category);
+  $('#detail-name').textContent = d.name;
+  $('#detail-cat').textContent = d.category;
+  $('#detail-cat').style.background = `color-mix(in srgb, ${color} 20%, transparent)`;
+  $('#detail-cat').style.color = color;
+  $('#detail-cat').style.borderColor = `color-mix(in srgb, ${color} 45%, transparent)`;
+  $('#detail-caseno').textContent = '';
+  showView('view-dossier');
+  await loadSubcards();
+}
+
+async function loadSubcards(){
+  const { data, error } = await supabase
+    .from('subcards')
+    .select('*')
+    .eq('dossier_id', currentDossier.id)
+    .order('created_at', { ascending: true });
+
+  if(error){ toast('Erreur de chargement des fiches', true); console.error(error); return; }
+  currentSubcards = data || [];
+  renderSubcards();
+}
+
+function renderSubcards(){
+  const grid = $('#subcards-grid');
+  grid.innerHTML = '';
+
+  currentSubcards.forEach(s => {
+    const card = document.createElement('div');
+    card.className = 'subcard glass';
+    card.innerHTML = `
+      <button class="subcard-del" data-id="${s.id}" title="Supprimer">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+      </button>
+      <div class="subcard-title">${escapeHtml(s.title || 'Sans titre')}</div>
+      <div class="subcard-preview">${escapeHtml(stripHtml(s.content).slice(0, 220))}</div>
+      <div class="subcard-foot">Modifiée le ${fmtDate(s.updated_at)}</div>
+    `;
+    card.addEventListener('click', (e) => {
+      if(e.target.closest('.subcard-del')) return;
+      openEditor(s);
+    });
+    grid.appendChild(card);
+  });
+
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'add-subcard glass';
+  addBtn.innerHTML = `
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+    <span>Ajouter une fiche</span>
+  `;
+  addBtn.addEventListener('click', createSubcard);
+  grid.appendChild(addBtn);
+
+  $$('.subcard-del').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      const { error } = await supabase.from('subcards').delete().eq('id', id);
+      if(error){ toast('Erreur lors de la suppression', true); return; }
+      toast('Fiche supprimée');
+      await loadSubcards();
+    });
+  });
+}
+
+async function createSubcard(){
+  const { data, error } = await supabase
+    .from('subcards')
+    .insert({
+      dossier_id: currentDossier.id,
+      title: 'Nouvelle fiche',
+      content: '',
+      created_by: currentUser.id
+    })
+    .select()
+    .single();
+
+  if(error){ toast('Impossible de créer la fiche', true); console.error(error); return; }
+  await loadSubcards();
+  openEditor(data);
+}
+
+/* ================================================
+   EDITOR (sous-carte)
+================================================ */
+function openEditor(subcard){
+  currentEditingSubcard = subcard;
+  $('#editor-title-input').value = subcard.title || '';
+  $('#editor-content').innerHTML = subcard.content || '';
+  $('#editor-sub').textContent = `Créée le ${fmtDate(subcard.created_at)} · Modifiée le ${fmtDate(subcard.updated_at)}`;
+  setSaveStatus('saved');
+  showOverlay('editor-overlay');
+  setTimeout(() => $('#editor-content').focus(), 60);
+}
+
+function setSaveStatus(state){
+  const el = $('#save-status');
+  el.classList.remove('saved', 'pending');
+  if(state === 'saved'){ el.classList.add('saved'); $('#save-status-text').textContent = 'Enregistré'; }
+  else if(state === 'pending'){ el.classList.add('pending'); $('#save-status-text').textContent = 'Modifications en attente…'; }
+  else { $('#save-status-text').textContent = 'Enregistrement…'; }
+}
+
+function scheduleSave(){
+  setSaveStatus('pending');
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(saveEditor, 900);
+}
+
+async function saveEditor(){
+  if(!currentEditingSubcard) return;
+  setSaveStatus('saving');
+  const title = $('#editor-title-input').value.trim() || 'Sans titre';
+  const content = $('#editor-content').innerHTML;
+
+  const { error } = await supabase
+    .from('subcards')
+    .update({ title, content })
+    .eq('id', currentEditingSubcard.id);
+
+  if(error){
+    toast('Erreur lors de l\'enregistrement', true);
+    console.error(error);
+    return;
+  }
+  setSaveStatus('saved');
+}
+
+$('#editor-title-input').addEventListener('input', scheduleSave);
+$('#editor-content').addEventListener('input', scheduleSave);
+
+$$('.tb-btn').forEach(btn => {
+  btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
+  btn.addEventListener('click', () => {
+    const cmd = btn.dataset.cmd;
+    const val = btn.dataset.val || null;
+    document.execCommand(cmd, false, val);
+    $('#editor-content').focus();
+    scheduleSave();
+  });
+});
+
+async function closeEditor(){
+  clearTimeout(saveTimer);
+  await saveEditor();
+  hideOverlay('editor-overlay');
+  currentEditingSubcard = null;
+  await loadSubcards();
+}
+
+$('#btn-close-editor').addEventListener('click', closeEditor);
+$('#editor-overlay').addEventListener('click', (e) => { if(e.target.id === 'editor-overlay') closeEditor(); });
+
+$('#btn-delete-subcard').addEventListener('click', async () => {
+  if(!currentEditingSubcard) return;
+  const { error } = await supabase.from('subcards').delete().eq('id', currentEditingSubcard.id);
+  if(error){ toast('Erreur lors de la suppression', true); return; }
+  hideOverlay('editor-overlay');
+  currentEditingSubcard = null;
+  toast('Fiche supprimée');
+  await loadSubcards();
+});
+
+/* ---------------- boot ---------------- */
+init();
+</script>
+</body>
+</html>
