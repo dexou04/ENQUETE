@@ -495,6 +495,12 @@
   }
   #editor-content h3{ font-family:var(--font-display); font-size:16px; margin:14px 0 6px; letter-spacing:0.3px; }
   #editor-content ul, #editor-content ol{ padding-left:22px; margin:6px 0; }
+  #editor-content img{
+    max-width:100%; border-radius:10px; display:block; margin:12px 0;
+    border:1px solid var(--glass-border-soft);
+  }
+  #editor-content img.uploading{ opacity:0.45; }
+  .tb-btn.uploading{ opacity:0.5; pointer-events:none; }
   #editor-content:empty::before{
     content:'Rédigez vos notes d\'enquête ici...'; color:var(--text-dim); font-style:italic;
   }
@@ -713,6 +719,11 @@
       <button type="button" class="tb-btn" data-cmd="removeFormat" title="Effacer la mise en forme">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 7V5a1 1 0 011-1h9l5 5-9 9-6-6z"/><path d="M13 4L7 10"/><line x1="3" y1="21" x2="21" y2="21"/></svg>
       </button>
+      <div class="tb-sep"></div>
+      <button type="button" class="tb-btn" id="btn-insert-image" title="Insérer une photo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>
+      </button>
+      <input type="file" id="image-file-input" accept="image/*" style="display:none" multiple>
     </div>
     <div class="editor-body">
       <div id="editor-content" contenteditable="true"></div>
@@ -1236,7 +1247,7 @@ async function saveEditor(){
 $('#editor-title-input').addEventListener('input', scheduleSave);
 $('#editor-content').addEventListener('input', scheduleSave);
 
-$$('.tb-btn').forEach(btn => {
+$$('.tb-btn[data-cmd]').forEach(btn => {
   btn.addEventListener('mousedown', (e) => e.preventDefault()); // keep selection
   btn.addEventListener('click', () => {
     const cmd = btn.dataset.cmd;
@@ -1245,6 +1256,81 @@ $$('.tb-btn').forEach(btn => {
     $('#editor-content').focus();
     scheduleSave();
   });
+});
+
+/* ---------------- images ---------------- */
+const PHOTOS_BUCKET = 'photos';
+let savedRange = null;
+
+$('#editor-content').addEventListener('mouseup', saveSelectionRange);
+$('#editor-content').addEventListener('keyup', saveSelectionRange);
+function saveSelectionRange(){
+  const sel = window.getSelection();
+  if(sel && sel.rangeCount > 0 && $('#editor-content').contains(sel.anchorNode)){
+    savedRange = sel.getRangeAt(0).cloneRange();
+  }
+}
+
+$('#btn-insert-image').addEventListener('mousedown', (e) => e.preventDefault());
+$('#btn-insert-image').addEventListener('click', () => {
+  $('#image-file-input').value = '';
+  $('#image-file-input').click();
+});
+
+$('#image-file-input').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files || []);
+  if(files.length === 0) return;
+
+  const editor = $('#editor-content');
+  editor.focus();
+  if(savedRange){
+    const sel = window.getSelection();
+    sel.removeAllRanges();
+    sel.addRange(savedRange);
+  }
+
+  const btn = $('#btn-insert-image');
+  btn.classList.add('uploading');
+
+  for(const file of files){
+    if(!file.type.startsWith('image/')){ continue; }
+    if(file.size > 8 * 1024 * 1024){
+      toast(`"${file.name}" dépasse 8 Mo, ignorée`, true);
+      continue;
+    }
+
+    // place un placeholder pendant l'upload
+    const placeholderId = 'img-' + Math.random().toString(36).slice(2);
+    document.execCommand('insertHTML', false,
+      `<img id="${placeholderId}" class="uploading" src="" alt="Chargement…">`);
+
+    try{
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${currentDossier.id}/${currentEditingSubcard.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(path, file, { cacheControl: '3600', upsert: false });
+
+      if(uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path);
+      const img = document.getElementById(placeholderId);
+      if(img){
+        img.src = publicData.publicUrl;
+        img.alt = file.name;
+        img.classList.remove('uploading');
+      }
+    } catch(err){
+      console.error(err);
+      const img = document.getElementById(placeholderId);
+      if(img) img.remove();
+      toast("Erreur lors de l'envoi de la photo", true);
+    }
+  }
+
+  btn.classList.remove('uploading');
+  scheduleSave();
 });
 
 async function closeEditor(){
