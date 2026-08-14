@@ -8,10 +8,10 @@
 <link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg-1:#0a0c16;
-    --bg-2:#170f2b;
-    --bg-3:#2a1240;
-    --bg-4:#150a22;
+    --bg-1:#0a0d13;
+    --bg-2:#0d1620;
+    --bg-3:#13273a;
+    --bg-4:#0a141d;
     --glass-bg: rgba(255,255,255,0.055);
     --glass-bg-strong: rgba(255,255,255,0.09);
     --glass-border: rgba(255,255,255,0.14);
@@ -20,9 +20,9 @@
     --text-muted:#948fae;
     --text-dim:#6b6684;
     --red:#d6484f;
-    --red-soft: rgba(214,72,79,0.16);
+    --red-soft: rgba(214,72,79,0.14);
     --amber:#e8a13d;
-    --purple:#8d6bc7;
+    --blue:#4f7fd1;
     --teal:#3fa89a;
     --font-display:'Special Elite', 'IBM Plex Mono', monospace;
     --font-body:'IBM Plex Sans', sans-serif;
@@ -54,9 +54,9 @@
     content:'';
     position:absolute; inset:-20%;
     background:
-      radial-gradient(circle at 15% 20%, rgba(141,107,199,0.28), transparent 45%),
-      radial-gradient(circle at 85% 15%, rgba(214,72,79,0.16), transparent 40%),
-      radial-gradient(circle at 75% 85%, rgba(63,168,154,0.14), transparent 45%),
+      radial-gradient(circle at 15% 20%, rgba(79,127,209,0.26), transparent 45%),
+      radial-gradient(circle at 85% 15%, rgba(214,72,79,0.14), transparent 40%),
+      radial-gradient(circle at 75% 85%, rgba(63,168,154,0.13), transparent 45%),
       linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 45%, var(--bg-3) 75%, var(--bg-4) 100%);
     background-size: 160% 160%, 160% 160%, 160% 160%, 100% 100%;
     animation: drift 40s ease-in-out infinite alternate;
@@ -117,7 +117,7 @@
   .login-badge{
     width:56px; height:56px; border-radius:50%;
     display:flex; align-items:center; justify-content:center;
-    background: radial-gradient(circle at 35% 30%, rgba(214,72,79,0.35), rgba(141,107,199,0.15));
+    background: radial-gradient(circle at 35% 30%, rgba(214,72,79,0.35), rgba(79,127,209,0.18));
     border:1px solid var(--glass-border);
     margin-bottom:18px;
   }
@@ -241,7 +241,7 @@
   .dossier-card::before{
     content:''; position:absolute; top:0; left:22px; width:34px; height:6px;
     border-radius:0 0 4px 4px;
-    background: var(--cat-color, var(--purple));
+    background: var(--cat-color, var(--blue));
     opacity:0.85;
   }
   .dossier-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
@@ -249,9 +249,9 @@
     display:inline-flex; align-items:center; gap:6px;
     padding:4px 10px; border-radius:999px;
     font-size:10px; letter-spacing:1px; text-transform:uppercase; font-weight:600;
-    background: color-mix(in srgb, var(--cat-color, var(--purple)) 20%, transparent);
-    color: var(--cat-color, var(--purple));
-    border:1px solid color-mix(in srgb, var(--cat-color, var(--purple)) 45%, transparent);
+    background: color-mix(in srgb, var(--cat-color, var(--blue)) 20%, transparent);
+    color: var(--cat-color, var(--blue));
+    border:1px solid color-mix(in srgb, var(--cat-color, var(--blue)) 45%, transparent);
   }
   .case-no{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); letter-spacing:0.5px; }
   .dossier-name{
@@ -444,7 +444,7 @@
   }
   #editor-content mark{ background:#e8d33d; color:#1a1420; padding:0 2px; border-radius:2px; }
   #editor-content blockquote{
-    border-left:3px solid var(--purple); padding:4px 14px; margin:10px 0;
+    border-left:3px solid var(--blue); padding:4px 14px; margin:10px 0;
     color:var(--text-muted); font-style:italic;
   }
   #editor-content h3{ font-family:var(--font-display); font-size:16px; margin:14px 0 6px; letter-spacing:0.3px; }
@@ -623,6 +623,21 @@
   </div>
 </div>
 
+<!-- ============ MODAL: name new subcard ============ -->
+<div class="overlay" id="name-subcard-overlay">
+  <form class="modal glass" id="name-subcard-form" style="width:360px;">
+    <div class="modal-title">Nouvelle fiche</div>
+    <div class="field" style="margin-bottom:0;">
+      <label for="new-subcard-name">Nom de la fiche</label>
+      <input id="new-subcard-name" type="text" placeholder="ex. Témoin n°2" required maxlength="140">
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn-ghost" id="name-subcard-cancel">Annuler</button>
+      <button type="submit" class="btn-primary" id="name-subcard-submit">Créer la fiche</button>
+    </div>
+  </form>
+</div>
+
 <!-- ============ EDITOR: subcard ============ -->
 <div class="overlay" id="editor-overlay">
   <div class="modal glass" id="editor-modal">
@@ -679,12 +694,12 @@ const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 const CATEGORY_COLORS = {
   'gang': '#d6484f',
-  'organisation criminelle': '#8d6bc7',
+  'organisation criminelle': '#4f7fd1',
   'petites frappes': '#e8a13d',
   'famille': '#3fa89a',
 };
 function catColor(cat){
-  return CATEGORY_COLORS[(cat||'').trim().toLowerCase()] || '#8d6bc7';
+  return CATEGORY_COLORS[(cat||'').trim().toLowerCase()] || '#4f7fd1';
 }
 
 /* ---------------- helpers ---------------- */
@@ -998,7 +1013,7 @@ function renderSubcards(){
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
     <span>Ajouter une fiche</span>
   `;
-  addBtn.addEventListener('click', createSubcard);
+  addBtn.addEventListener('click', openNameSubcardModal);
   grid.appendChild(addBtn);
 
   $$('.subcard-del').forEach(btn => {
@@ -1013,22 +1028,42 @@ function renderSubcards(){
   });
 }
 
-async function createSubcard(){
+function openNameSubcardModal(){
+  $('#new-subcard-name').value = '';
+  showOverlay('name-subcard-overlay');
+  setTimeout(() => $('#new-subcard-name').focus(), 50);
+}
+$('#name-subcard-cancel').addEventListener('click', () => hideOverlay('name-subcard-overlay'));
+$('#name-subcard-overlay').addEventListener('click', (e) => { if(e.target.id === 'name-subcard-overlay') hideOverlay('name-subcard-overlay'); });
+
+$('#name-subcard-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const title = $('#new-subcard-name').value.trim();
+  if(!title) return;
+
+  const btn = $('#name-subcard-submit');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span>';
+
   const { data, error } = await supabase
     .from('subcards')
     .insert({
       dossier_id: currentDossier.id,
-      title: 'Nouvelle fiche',
+      title: title,
       content: '',
       created_by: currentUser.id
     })
     .select()
     .single();
 
+  btn.disabled = false;
+  btn.textContent = 'Créer la fiche';
+
   if(error){ toast('Impossible de créer la fiche', true); console.error(error); return; }
+  hideOverlay('name-subcard-overlay');
   await loadSubcards();
   openEditor(data);
-}
+});
 
 /* ================================================
    EDITOR (sous-carte)
