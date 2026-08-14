@@ -221,18 +221,29 @@
   .dossiers-scroll{ flex:1; overflow-y:auto; padding-bottom:10px; }
   .dossiers-grid{
     display:grid;
-    grid-template-columns: repeat(auto-fill, minmax(258px, 1fr));
+    grid-template-columns: repeat(4, 1fr);
+    grid-auto-rows: 190px;
     gap:20px;
   }
 
   .dossier-card{
-    border-radius:18px; padding:20px 20px 18px;
+    border-radius:18px; padding:20px 20px 16px;
     position:relative; overflow:hidden;
     cursor:pointer;
     transition: transform .16s ease, box-shadow .16s ease, border-color .16s;
-    min-height:150px;
     display:flex; flex-direction:column;
+    grid-column: span 1;
+    grid-row: span 1;
   }
+  /* taille selon le nombre de fiches contenues */
+  .dossier-card--md{ grid-column: span 2; }
+  .dossier-card--lg{ grid-column: span 2; grid-row: span 2; }
+  .dossier-card--xl{ grid-column: span 3; grid-row: span 2; }
+  .dossier-card--md .dossier-name,
+  .dossier-card--lg .dossier-name,
+  .dossier-card--xl .dossier-name{ font-size:22px; }
+  .dossier-card--lg .dossier-name,
+  .dossier-card--xl .dossier-name{ font-size:25px; }
   .dossier-card:hover{
     transform:translateY(-4px);
     border-color:rgba(255,255,255,0.24);
@@ -257,12 +268,32 @@
   .dossier-name{
     font-family:var(--font-display);
     font-size:19px; line-height:1.32; letter-spacing:0.3px;
-    margin-bottom:auto; padding-bottom:14px; word-break:break-word;
+    padding-bottom:12px; word-break:break-word; flex-shrink:0;
+  }
+  .dossier-content-preview{
+    display:flex; flex-direction:column; gap:5px;
+    margin-bottom:10px; overflow:hidden; flex:1;
+  }
+  .dossier-content-preview .cp-item{
+    font-size:11.5px; color:var(--text-muted); line-height:1.4;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    padding-left:12px; position:relative;
+  }
+  .dossier-content-preview .cp-item::before{
+    content:''; position:absolute; left:0; top:6px; width:4px; height:4px;
+    border-radius:50%; background:var(--cat-color, var(--blue)); opacity:0.7;
+  }
+  .dossier-content-preview .cp-more{
+    font-size:10.5px; color:var(--text-dim); padding-left:12px; font-style:italic;
+  }
+  .dossier-content-empty{
+    font-size:11.5px; color:var(--text-dim); font-style:italic; flex:1; margin-bottom:10px;
   }
   .dossier-meta{
     display:flex; align-items:center; justify-content:space-between;
     font-size:11px; color:var(--text-dim); letter-spacing:0.3px;
     border-top:1px solid var(--glass-border-soft); padding-top:11px;
+    flex-shrink:0;
   }
   .dossier-del{
     position:absolute; top:14px; right:14px; width:26px; height:26px; border-radius:8px;
@@ -313,13 +344,28 @@
     border-radius:16px; padding:17px 18px 15px;
     cursor:pointer; position:relative;
     min-height:130px; display:flex; flex-direction:column;
-    transition: transform .15s, border-color .15s, box-shadow .15s;
+    transition: transform .15s, border-color .15s, box-shadow .15s, opacity .15s;
   }
+  .subcard.dragging{ opacity:0.4; }
+  .subcard.drag-over{
+    border-color: var(--amber);
+    box-shadow: 0 0 0 2px rgba(232,161,61,0.35), 0 12px 30px rgba(0,0,0,0.35);
+  }
+  .subcard-drag{
+    position:absolute; top:13px; left:13px; width:22px; height:22px; border-radius:6px;
+    display:flex; align-items:center; justify-content:center;
+    color:var(--text-dim); cursor:grab; opacity:0; transition: opacity .15s, background .15s, color .15s;
+  }
+  .subcard-drag:hover{ background:var(--glass-bg-strong); color:var(--text-main); }
+  .subcard:hover .subcard-drag{ opacity:1; }
+  .subcard-drag:active{ cursor:grabbing; }
+  .subcard-drag svg{ width:14px; height:14px; }
   .subcard:hover{
     transform:translateY(-3px);
     border-color:rgba(255,255,255,0.22);
     box-shadow:0 12px 30px rgba(0,0,0,0.35);
   }
+  .subcard.dragging:hover, .subcard.drag-over:hover{ transform:none; }
   .subcard-title{
     font-family:var(--font-display); font-size:15px; letter-spacing:0.3px;
     margin-bottom:9px; padding-right:20px; word-break:break-word;
@@ -812,7 +858,8 @@ async function loadDossiers(){
   $('#dossier-count-label').textContent = 'Chargement…';
   const { data, error } = await supabase
     .from('dossiers')
-    .select('*, subcards(count)')
+    .select('*, subcards(id, title, content, created_at)')
+    .order('created_at', { foreignTable: 'subcards', ascending: true })
     .order('created_at', { ascending: false });
 
   if(error){
@@ -841,11 +888,33 @@ function renderDossiers(){
   empty.classList.add('hidden');
 
   dossiers.forEach((d, i) => {
-    const count = (d.subcards && d.subcards[0] && d.subcards[0].count) || 0;
+    const subs = d.subcards || [];
+    const count = subs.length;
     const color = catColor(d.category);
+
+    // taille de la carte selon la quantité de contenu du dossier
+    let sizeClass = '';
+    let previewLimit = 2;
+    if(count >= 8){ sizeClass = 'dossier-card--xl'; previewLimit = 6; }
+    else if(count >= 5){ sizeClass = 'dossier-card--lg'; previewLimit = 5; }
+    else if(count >= 3){ sizeClass = 'dossier-card--md'; previewLimit = 3; }
+
     const card = document.createElement('div');
-    card.className = 'dossier-card glass';
+    card.className = `dossier-card glass ${sizeClass}`;
     card.style.setProperty('--cat-color', color);
+
+    let previewHtml;
+    if(count === 0){
+      previewHtml = `<div class="dossier-content-empty">Aucune fiche pour l'instant.</div>`;
+    } else {
+      const items = subs.slice(0, previewLimit).map(s => {
+        const label = (s.title && s.title.trim()) || stripHtml(s.content).slice(0, 60) || 'Sans titre';
+        return `<div class="cp-item">${escapeHtml(label)}</div>`;
+      }).join('');
+      const rest = count - previewLimit;
+      previewHtml = `<div class="dossier-content-preview">${items}${rest > 0 ? `<div class="cp-more">+ ${rest} autre${rest === 1 ? '' : 's'} fiche${rest === 1 ? '' : 's'}</div>` : ''}</div>`;
+    }
+
     card.innerHTML = `
       <button class="dossier-del" data-id="${d.id}" title="Supprimer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
@@ -855,6 +924,7 @@ function renderDossiers(){
         <span class="case-no">${caseNumber(dossiers.length - i, d.created_at)}</span>
       </div>
       <div class="dossier-name">${escapeHtml(d.name)}</div>
+      ${previewHtml}
       <div class="dossier-meta">
         <span>${count} fiche${count === 1 ? '' : 's'}</span>
         <span>${fmtDate(d.created_at)}</span>
@@ -977,12 +1047,15 @@ async function loadSubcards(){
     .from('subcards')
     .select('*')
     .eq('dossier_id', currentDossier.id)
+    .order('position', { ascending: true })
     .order('created_at', { ascending: true });
 
   if(error){ toast('Erreur de chargement des fiches', true); console.error(error); return; }
   currentSubcards = data || [];
   renderSubcards();
 }
+
+let dragSrcId = null;
 
 function renderSubcards(){
   const grid = $('#subcards-grid');
@@ -991,7 +1064,12 @@ function renderSubcards(){
   currentSubcards.forEach(s => {
     const card = document.createElement('div');
     card.className = 'subcard glass';
+    card.draggable = true;
+    card.dataset.id = s.id;
     card.innerHTML = `
+      <div class="subcard-drag" title="Glisser pour réordonner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="9" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="18" r="1"/></svg>
+      </div>
       <button class="subcard-del" data-id="${s.id}" title="Supprimer">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
       </button>
@@ -1000,9 +1078,43 @@ function renderSubcards(){
       <div class="subcard-foot">Modifiée le ${fmtDate(s.updated_at)}</div>
     `;
     card.addEventListener('click', (e) => {
-      if(e.target.closest('.subcard-del')) return;
+      if(e.target.closest('.subcard-del') || e.target.closest('.subcard-drag')) return;
       openEditor(s);
     });
+
+    card.addEventListener('dragstart', (e) => {
+      dragSrcId = s.id;
+      card.classList.add('dragging');
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', s.id);
+    });
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+      $$('.subcard').forEach(c => c.classList.remove('drag-over'));
+    });
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      if(s.id !== dragSrcId) card.classList.add('drag-over');
+    });
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+    card.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      if(!dragSrcId || dragSrcId === s.id) return;
+
+      const fromIndex = currentSubcards.findIndex(x => x.id === dragSrcId);
+      const toIndex = currentSubcards.findIndex(x => x.id === s.id);
+      if(fromIndex === -1 || toIndex === -1) return;
+
+      const [moved] = currentSubcards.splice(fromIndex, 1);
+      currentSubcards.splice(toIndex, 0, moved);
+      renderSubcards();
+      await persistSubcardOrder();
+    });
+
     grid.appendChild(card);
   });
 
@@ -1026,6 +1138,16 @@ function renderSubcards(){
       await loadSubcards();
     });
   });
+}
+
+async function persistSubcardOrder(){
+  const updates = currentSubcards.map((s, index) =>
+    supabase.from('subcards').update({ position: index }).eq('id', s.id)
+  );
+  const results = await Promise.all(updates);
+  if(results.some(r => r.error)){
+    toast("Erreur lors de l'enregistrement de l'ordre", true);
+  }
 }
 
 function openNameSubcardModal(){
