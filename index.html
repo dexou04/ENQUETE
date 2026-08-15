@@ -238,7 +238,7 @@
   }
   /* les dossiers avec beaucoup de fiches gagnent en hauteur, jamais en largeur (max 1/3 d'écran) */
   .dossier-card--lg{ grid-row: span 2; }
-  .dossier-card--lg .dossier-name{ font-size:21px; }
+  .dossier-card--lg .dossier-name{ font-size:22px; }
   .dossier-card:hover{
     transform:translateY(-5px);
     border-color: color-mix(in srgb, var(--cat-color, var(--blue)) 45%, var(--glass-border));
@@ -270,8 +270,13 @@
   .case-no{ font-family:var(--font-mono); font-size:10.5px; color:var(--text-dim); letter-spacing:0.5px; }
   .dossier-name{
     font-family:var(--font-display);
-    font-size:19px; line-height:1.32; letter-spacing:0.3px;
-    padding-bottom:13px; word-break:break-word; flex-shrink:0;
+    font-size:20px; line-height:1.32; letter-spacing:0.4px; color:#fdfcff;
+    padding-bottom:15px; word-break:break-word; flex-shrink:0;
+    position:relative;
+  }
+  .dossier-name::after{
+    content:''; position:absolute; left:0; bottom:0; width:28px; height:2px;
+    border-radius:2px; background:var(--cat-color, var(--blue)); opacity:0.85;
   }
   .dossier-content-preview{
     display:flex; flex-direction:column; gap:6px;
@@ -371,13 +376,19 @@
   }
   .subcard.dragging:hover, .subcard.drag-over:hover{ transform:none; }
   .subcard-title{
-    font-family:var(--font-display); font-size:15px; letter-spacing:0.3px;
-    margin-bottom:9px; padding-right:20px; word-break:break-word;
+    font-family:var(--font-display); font-size:16.5px; letter-spacing:0.35px; color:#fdfcff;
+    margin-bottom:11px; padding-right:20px; padding-bottom:10px; word-break:break-word;
+    position:relative;
+  }
+  .subcard-title::after{
+    content:''; position:absolute; left:0; bottom:0; width:24px; height:2px;
+    border-radius:2px; background:var(--amber); opacity:0.75;
   }
   .subcard-preview{
-    font-size:12.5px; color:var(--text-muted); line-height:1.55;
+    font-size:12.5px; color:var(--text-muted); line-height:1.6;
     flex:1; overflow:hidden; display:-webkit-box;
     -webkit-line-clamp:4; -webkit-box-orient:vertical;
+    white-space:pre-line;
   }
   .subcard-preview:empty::before{ content:'Fiche vide — cliquez pour rédiger.'; color:var(--text-dim); font-style:italic; }
   .subcard-foot{
@@ -877,9 +888,16 @@ function escapeHtml(str){
   return d.innerHTML;
 }
 function stripHtml(html){
+  if(!html) return '';
   const d = document.createElement('div');
-  d.innerHTML = html || '';
-  return d.textContent || '';
+  d.innerHTML = html;
+  // insère un retour à la ligne aux endroits qui structurent visuellement le texte
+  d.querySelectorAll('br').forEach(br => br.replaceWith('\n'));
+  d.querySelectorAll('p, div, h3, li, blockquote').forEach(el => {
+    el.insertAdjacentText('afterend', '\n');
+  });
+  const text = d.textContent || '';
+  return text.replace(/\n{3,}/g, '\n\n').replace(/^\n+|\n+$/g, '');
 }
 function fmtDate(iso){
   const d = new Date(iso);
@@ -1374,8 +1392,9 @@ $('#image-file-input').addEventListener('change', async (e) => {
   await insertImageFiles(files);
 });
 
-/* colle une ou plusieurs images depuis le presse-papiers (Ctrl+V) */
-$('#editor-content').addEventListener('paste', (e) => {
+/* colle une ou plusieurs images depuis le presse-papiers (Ctrl+V) — écoute sur toute la
+   fenêtre de la fiche pour fonctionner même si le focus n'est pas exactement dans la zone de texte */
+$('#editor-modal').addEventListener('paste', (e) => {
   const cd = e.clipboardData || window.clipboardData;
   const items = Array.from(cd?.items || []);
   const imageFiles = items
@@ -1386,7 +1405,25 @@ $('#editor-content').addEventListener('paste', (e) => {
   if(imageFiles.length === 0) return; // laisse le collage de texte normal se faire
 
   e.preventDefault();
-  saveSelectionRange();
+
+  const editor = $('#editor-content');
+  const sel = window.getSelection();
+  const focusedInEditor = sel && sel.rangeCount > 0 && editor.contains(sel.anchorNode);
+
+  if(focusedInEditor){
+    saveSelectionRange();
+  } else {
+    // le focus n'était pas dans la zone de texte (ex: dans le titre) : on place le curseur à la fin
+    editor.focus();
+    const range = document.createRange();
+    range.selectNodeContents(editor);
+    range.collapse(false);
+    const sel2 = window.getSelection();
+    sel2.removeAllRanges();
+    sel2.addRange(range);
+    savedRange = range.cloneRange();
+  }
+
   insertImageFiles(imageFiles);
 });
 
