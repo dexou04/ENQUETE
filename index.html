@@ -496,7 +496,7 @@
   #editor-content h3{ font-family:var(--font-display); font-size:16px; margin:14px 0 6px; letter-spacing:0.3px; }
   #editor-content ul, #editor-content ol{ padding-left:22px; margin:6px 0; }
   #editor-content img{
-    max-width:100%; border-radius:10px; display:block; margin:12px 0;
+    max-width:100%; border-radius:10px; display:block; margin:0;
     border:1px solid var(--glass-border-soft);
   }
   #editor-content img.uploading{ opacity:0.45; }
@@ -504,6 +504,55 @@
   #editor-content:empty::before{
     content:'Rédigez vos notes d\'enquête ici...'; color:var(--text-dim); font-style:italic;
   }
+
+  /* ---- image wrapper (bouton dessiner au survol) ---- */
+  .img-wrap{ position:relative; display:block; margin:12px 0; width:fit-content; max-width:100%; }
+  .img-edit-btn{
+    position:absolute; top:8px; right:8px; z-index:2;
+    width:30px; height:30px; border-radius:8px;
+    display:flex; align-items:center; justify-content:center;
+    background:rgba(10,13,19,0.72); backdrop-filter:blur(4px);
+    border:1px solid var(--glass-border); color:var(--text-main);
+    opacity:0; transition:opacity .15s, background .15s, transform .12s;
+  }
+  .img-wrap:hover .img-edit-btn{ opacity:1; }
+  .img-edit-btn:hover{ background:rgba(214,72,79,0.6); transform:translateY(-1px); }
+  .img-edit-btn svg{ width:15px; height:15px; }
+
+  /* ---- draw overlay (dessiner sur une photo) ---- */
+  .draw-overlay .modal, #draw-modal{
+    width:820px; max-width:92vw; height:80vh; max-height:680px;
+    display:flex; flex-direction:column; padding:0; border-radius:20px; overflow:hidden;
+  }
+  .draw-head{ padding:18px 24px 14px; border-bottom:1px solid var(--glass-border-soft); flex-shrink:0; }
+  .draw-toolbar{
+    display:flex; align-items:center; gap:12px; padding:10px 20px;
+    border-bottom:1px solid var(--glass-border-soft); flex-shrink:0; flex-wrap:wrap;
+  }
+  .draw-colors{ display:flex; gap:7px; }
+  .draw-color{
+    width:22px; height:22px; border-radius:50%; box-shadow:0 0 0 1px var(--glass-border-soft);
+    transition: transform .12s, box-shadow .12s;
+  }
+  .draw-color:hover{ transform:scale(1.12); }
+  .draw-color.active{ box-shadow:0 0 0 2px var(--bg-2), 0 0 0 4px var(--amber); }
+  .draw-size-wrap{ display:flex; align-items:center; gap:8px; font-size:11px; color:var(--text-dim); letter-spacing:0.3px; }
+  .draw-size-wrap input[type="range"]{ width:110px; accent-color:var(--amber); }
+  .draw-canvas-wrap{
+    flex:1; overflow:auto; display:flex; align-items:center; justify-content:center;
+    padding:18px; background:rgba(0,0,0,0.28);
+  }
+  #draw-canvas{
+    max-width:100%; max-height:100%; border-radius:6px; cursor:crosshair;
+    touch-action:none; background:#fff; box-shadow:0 4px 24px rgba(0,0,0,0.45);
+  }
+  .draw-foot{
+    display:flex; align-items:center; gap:8px;
+    padding:14px 22px; border-top:1px solid var(--glass-border-soft); flex-shrink:0;
+  }
+  .draw-foot .spacer{ flex:1; }
+  .draw-foot button{ padding:9px 17px; border-radius:9px; font-size:12.5px; font-weight:600; }
+  .draw-save-btn{ width:auto !important; margin-top:0 !important; }
 
   .editor-foot{
     display:flex; align-items:center; justify-content:space-between;
@@ -734,6 +783,44 @@
         <button type="button" class="btn-del-sub" id="btn-delete-subcard">Supprimer la fiche</button>
         <button type="button" class="btn-close" id="btn-close-editor">Fermer</button>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ---- dessiner sur une photo ---- -->
+<div class="overlay" id="draw-overlay">
+  <div class="modal glass" id="draw-modal">
+    <div class="draw-head">
+      <div class="modal-title" style="margin-bottom:0;">Dessiner sur la photo</div>
+    </div>
+    <div class="draw-toolbar">
+      <div class="draw-colors">
+        <button type="button" class="draw-color active" data-color="#d6484f" style="background:#d6484f" title="Rouge"></button>
+        <button type="button" class="draw-color" data-color="#e8a13d" style="background:#e8a13d" title="Ambre"></button>
+        <button type="button" class="draw-color" data-color="#3fa89a" style="background:#3fa89a" title="Sarcelle"></button>
+        <button type="button" class="draw-color" data-color="#4f7fd1" style="background:#4f7fd1" title="Bleu"></button>
+        <button type="button" class="draw-color" data-color="#ece9f5" style="background:#ece9f5" title="Blanc"></button>
+        <button type="button" class="draw-color" data-color="#0a0d13" style="background:#0a0d13" title="Noir"></button>
+      </div>
+      <div class="tb-sep"></div>
+      <div class="draw-size-wrap">
+        <span>Épaisseur</span>
+        <input type="range" id="draw-size" min="2" max="26" value="6">
+      </div>
+      <div class="tb-sep"></div>
+      <button type="button" class="tb-btn" id="draw-undo" title="Annuler le dernier trait">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 010 12h-1"/></svg>
+        Annuler
+      </button>
+      <button type="button" class="tb-btn" id="draw-reset" title="Revenir à la photo d'origine">Réinitialiser</button>
+    </div>
+    <div class="draw-canvas-wrap">
+      <canvas id="draw-canvas"></canvas>
+    </div>
+    <div class="draw-foot">
+      <div class="spacer"></div>
+      <button type="button" class="btn-close" id="draw-cancel">Annuler</button>
+      <button type="button" class="btn-primary draw-save-btn" id="draw-save">Enregistrer le dessin</button>
     </div>
   </div>
 </div>
@@ -1205,6 +1292,7 @@ function openEditor(subcard){
   currentEditingSubcard = subcard;
   $('#editor-title-input').value = subcard.title || '';
   $('#editor-content').innerHTML = subcard.content || '';
+  wrapEditorImages();
   $('#editor-sub').textContent = `Créée le ${fmtDate(subcard.created_at)} · Modifiée le ${fmtDate(subcard.updated_at)}`;
   setSaveStatus('saved');
   showOverlay('editor-overlay');
@@ -1229,7 +1317,7 @@ async function saveEditor(){
   if(!currentEditingSubcard) return;
   setSaveStatus('saving');
   const title = $('#editor-title-input').value.trim() || 'Sans titre';
-  const content = $('#editor-content').innerHTML;
+  const content = getCleanEditorHtml();
 
   const { error } = await supabase
     .from('subcards')
@@ -1280,7 +1368,27 @@ $('#btn-insert-image').addEventListener('click', () => {
 $('#image-file-input').addEventListener('change', async (e) => {
   const files = Array.from(e.target.files || []);
   if(files.length === 0) return;
+  await insertImageFiles(files);
+});
 
+/* colle une ou plusieurs images depuis le presse-papiers (Ctrl+V) */
+$('#editor-content').addEventListener('paste', (e) => {
+  const cd = e.clipboardData || window.clipboardData;
+  const items = Array.from(cd?.items || []);
+  const imageFiles = items
+    .filter(it => it.kind === 'file' && it.type.startsWith('image/'))
+    .map(it => it.getAsFile())
+    .filter(Boolean);
+
+  if(imageFiles.length === 0) return; // laisse le collage de texte normal se faire
+
+  e.preventDefault();
+  saveSelectionRange();
+  insertImageFiles(imageFiles);
+});
+
+/* insère et téléverse une liste de fichiers image au niveau du curseur */
+async function insertImageFiles(files){
   const editor = $('#editor-content');
   editor.focus();
   if(savedRange){
@@ -1295,7 +1403,7 @@ $('#image-file-input').addEventListener('change', async (e) => {
   for(const file of files){
     if(!file.type.startsWith('image/')){ continue; }
     if(file.size > 8 * 1024 * 1024){
-      toast(`"${file.name}" dépasse 8 Mo, ignorée`, true);
+      toast(`"${file.name || 'image'}" dépasse 8 Mo, ignorée`, true);
       continue;
     }
 
@@ -1305,7 +1413,8 @@ $('#image-file-input').addEventListener('change', async (e) => {
       `<img id="${placeholderId}" class="uploading" src="" alt="Chargement…">`);
 
     try{
-      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const guessedExt = (file.type.split('/')[1] || 'png').split('+')[0];
+      const ext = (file.name && file.name.includes('.')) ? file.name.split('.').pop().toLowerCase() : guessedExt;
       const path = `${currentDossier.id}/${currentEditingSubcard.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
       const { error: uploadError } = await supabase.storage
@@ -1318,7 +1427,7 @@ $('#image-file-input').addEventListener('change', async (e) => {
       const img = document.getElementById(placeholderId);
       if(img){
         img.src = publicData.publicUrl;
-        img.alt = file.name;
+        img.alt = file.name || 'photo';
         img.classList.remove('uploading');
       }
     } catch(err){
@@ -1330,7 +1439,194 @@ $('#image-file-input').addEventListener('change', async (e) => {
   }
 
   btn.classList.remove('uploading');
+  wrapEditorImages();
   scheduleSave();
+}
+
+/* ---------------- dessiner sur une photo ---------------- */
+let currentDrawTargetImg = null;
+let drawHistory = [];
+let isDrawing = false;
+let drawColor = '#d6484f';
+let drawSize = 6;
+
+/* entoure chaque <img> non déjà entourée d'un conteneur avec bouton "dessiner" */
+function wrapEditorImages(){
+  $$('#editor-content img').forEach(img => {
+    if(img.parentElement && img.parentElement.classList.contains('img-wrap')) return;
+
+    const wrap = document.createElement('div');
+    wrap.className = 'img-wrap';
+    img.parentNode.insertBefore(wrap, img);
+    wrap.appendChild(img);
+
+    const editBtn = document.createElement('button');
+    editBtn.type = 'button';
+    editBtn.className = 'img-edit-btn';
+    editBtn.title = 'Dessiner sur la photo';
+    editBtn.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 013 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>`;
+    editBtn.addEventListener('mousedown', (e) => e.preventDefault());
+    editBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if(img.classList.contains('uploading')) return;
+      openDrawModal(img);
+    });
+    wrap.appendChild(editBtn);
+  });
+}
+
+/* renvoie le HTML de l'éditeur sans les conteneurs de survol (pour l'enregistrement) */
+function getCleanEditorHtml(){
+  const clone = $('#editor-content').cloneNode(true);
+  clone.querySelectorAll('.img-wrap').forEach(wrap => {
+    const img = wrap.querySelector('img');
+    if(img) wrap.replaceWith(img);
+    else wrap.remove();
+  });
+  return clone.innerHTML;
+}
+
+function openDrawModal(imgEl){
+  currentDrawTargetImg = imgEl;
+  const canvas = $('#draw-canvas');
+  const ctx = canvas.getContext('2d');
+  const loader = new Image();
+  loader.crossOrigin = 'anonymous';
+  loader.onload = () => {
+    const MAX_DIM = 1600;
+    let w = loader.naturalWidth, h = loader.naturalHeight;
+    if(w > MAX_DIM || h > MAX_DIM){
+      const scale = MAX_DIM / Math.max(w, h);
+      w = Math.round(w * scale);
+      h = Math.round(h * scale);
+    }
+    canvas.width = w;
+    canvas.height = h;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(loader, 0, 0, w, h);
+    drawHistory = [canvas.toDataURL('image/png')];
+    showOverlay('draw-overlay');
+  };
+  loader.onerror = () => {
+    toast("Impossible de charger cette photo pour dessiner dessus", true);
+  };
+  loader.src = imgEl.src;
+}
+
+$$('.draw-color').forEach(btn => {
+  btn.addEventListener('click', () => {
+    $$('.draw-color').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    drawColor = btn.dataset.color;
+  });
+});
+$('#draw-size').addEventListener('input', (e) => { drawSize = parseInt(e.target.value, 10) || 6; });
+
+function canvasPos(e){
+  const canvas = $('#draw-canvas');
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width / rect.width;
+  const scaleY = canvas.height / rect.height;
+  return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY, scale: (scaleX + scaleY) / 2 };
+}
+
+$('#draw-canvas').addEventListener('pointerdown', (e) => {
+  isDrawing = true;
+  const ctx = $('#draw-canvas').getContext('2d');
+  const p = canvasPos(e);
+  ctx.beginPath();
+  ctx.moveTo(p.x, p.y);
+  $('#draw-canvas').setPointerCapture(e.pointerId);
+});
+$('#draw-canvas').addEventListener('pointermove', (e) => {
+  if(!isDrawing) return;
+  const canvas = $('#draw-canvas');
+  const ctx = canvas.getContext('2d');
+  const p = canvasPos(e);
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  ctx.strokeStyle = drawColor;
+  ctx.lineWidth = Math.max(1, drawSize * p.scale);
+  ctx.lineTo(p.x, p.y);
+  ctx.stroke();
+});
+function endDrawStroke(){
+  if(!isDrawing) return;
+  isDrawing = false;
+  const canvas = $('#draw-canvas');
+  drawHistory.push(canvas.toDataURL('image/png'));
+  if(drawHistory.length > 25) drawHistory.shift();
+}
+$('#draw-canvas').addEventListener('pointerup', endDrawStroke);
+$('#draw-canvas').addEventListener('pointercancel', endDrawStroke);
+$('#draw-canvas').addEventListener('pointerleave', endDrawStroke);
+
+function restoreCanvasFromDataUrl(dataUrl){
+  const canvas = $('#draw-canvas');
+  const ctx = canvas.getContext('2d');
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = dataUrl;
+}
+
+$('#draw-undo').addEventListener('click', () => {
+  if(drawHistory.length <= 1) return;
+  drawHistory.pop();
+  restoreCanvasFromDataUrl(drawHistory[drawHistory.length - 1]);
+});
+$('#draw-reset').addEventListener('click', () => {
+  if(drawHistory.length === 0) return;
+  drawHistory = [drawHistory[0]];
+  restoreCanvasFromDataUrl(drawHistory[0]);
+});
+
+function closeDrawModal(){
+  hideOverlay('draw-overlay');
+  currentDrawTargetImg = null;
+  isDrawing = false;
+}
+$('#draw-cancel').addEventListener('click', closeDrawModal);
+$('#draw-overlay').addEventListener('click', (e) => { if(e.target.id === 'draw-overlay') closeDrawModal(); });
+
+$('#draw-save').addEventListener('click', () => {
+  if(!currentDrawTargetImg || !currentEditingSubcard) return;
+  const canvas = $('#draw-canvas');
+  const saveBtn = $('#draw-save');
+  const originalLabel = saveBtn.textContent;
+  saveBtn.disabled = true;
+  saveBtn.innerHTML = '<span class="spinner"></span>';
+
+  canvas.toBlob(async (blob) => {
+    if(!blob){
+      toast("Erreur lors de l'enregistrement du dessin", true);
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalLabel;
+      return;
+    }
+    try{
+      const path = `${currentDossier.id}/${currentEditingSubcard.id}/${Date.now()}-${Math.random().toString(36).slice(2)}.png`;
+      const { error: uploadError } = await supabase.storage
+        .from(PHOTOS_BUCKET)
+        .upload(path, blob, { cacheControl: '3600', upsert: false, contentType: 'image/png' });
+      if(uploadError) throw uploadError;
+
+      const { data: publicData } = supabase.storage.from(PHOTOS_BUCKET).getPublicUrl(path);
+      currentDrawTargetImg.src = publicData.publicUrl;
+      closeDrawModal();
+      scheduleSave();
+      toast('Dessin enregistré');
+    } catch(err){
+      console.error(err);
+      toast("Erreur lors de l'envoi du dessin", true);
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = originalLabel;
+    }
+  }, 'image/png');
 });
 
 async function closeEditor(){
