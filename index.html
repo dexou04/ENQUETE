@@ -1514,6 +1514,38 @@ function wrapEditorImages(){
     });
     wrap.appendChild(editBtn);
   });
+
+  /* garantit un endroit cliquable pour écrire avant / entre / après les images :
+     sans ça, deux <div class="img-wrap"> collés l'un à l'autre ne laissent aucun
+     point d'insertion de texte entre eux (impossible d'y taper quoi que ce soit) */
+  $$('#editor-content .img-wrap').forEach(wrap => {
+    ensureTypingGap(wrap, 'before');
+    ensureTypingGap(wrap, 'after');
+  });
+}
+
+/* insère une ligne vide (<br data-gap>) avant ou après une image si besoin, pour
+   qu'on puisse toujours cliquer et écrire du texte à cet endroit précis */
+function ensureTypingGap(wrap, side){
+  const sibling = side === 'before' ? wrap.previousSibling : wrap.nextSibling;
+
+  const isUsable = (node) => {
+    if(!node) return false;
+    if(node.nodeType === Node.TEXT_NODE) return node.textContent.length > 0;
+    if(node.nodeType !== Node.ELEMENT_NODE) return false;
+    if(node.tagName === 'BR') return true; // ligne déjà présente
+    return !node.classList.contains('img-wrap'); // un autre bloc (paragraphe, titre...) convient déjà
+  };
+
+  if(isUsable(sibling)) return;
+
+  const br = document.createElement('br');
+  br.dataset.gap = '1';
+  if(side === 'before'){
+    wrap.parentNode.insertBefore(br, wrap);
+  } else {
+    wrap.parentNode.insertBefore(br, wrap.nextSibling);
+  }
 }
 
 /* renvoie le HTML de l'éditeur sans les conteneurs de survol (pour l'enregistrement) */
